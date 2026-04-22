@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticket Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid #222;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; color: #fff; }
+    header .dot { width: 8px; height: 8px; border-radius: 50%; background: #444; }
+    header .dot.active { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+
+    .content { flex: 1; overflow: hidden; display: flex; gap: 0; }
+
+    /* ── Left panel: config + profile ── */
+    .panel-left {
+      width: 300px;
+      flex-shrink: 0;
+      border-right: 1px solid #222;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+
+    input, select {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e0e0e0;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    input:focus, select:focus { border-color: #555; }
+    input::placeholder { color: #444; }
+
+    .row { display: flex; gap: 8px; }
+    .row input, .row select { flex: 1; }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:disabled { opacity: 0.35; cursor: default; }
+
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:not(:disabled):hover { background: #1d4ed8; }
+
+    .btn-danger { background: #991b1b; color: #fff; }
+    .btn-danger:not(:disabled):hover { background: #7f1d1d; }
+
+    .btn-success { background: #15803d; color: #fff; }
+    .btn-success:not(:disabled):hover { background: #166534; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #aaa;
+      border: 1px solid #333;
+    }
+    .btn-ghost:not(:disabled):hover { background: #1a1a1a; color: #e0e0e0; }
+
+    /* ── Right panel: activity log + screens ── */
+    .panel-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Monitor screen */
+    #screen-monitor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #activity-log {
+      flex: 1;
+      padding: 16px 20px;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .log-line { color: #888; }
+    .log-line.info { color: #9ca3af; }
+    .log-line.success { color: #4ade80; }
+    .log-line.warn { color: #fbbf24; }
+    .log-line.error { color: #f87171; }
+
+    /* Confirm screen */
+    #screen-confirm {
+      display: none;
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .confirm-card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 32px;
+    }
+    .confirm-card h2 { font-size: 18px; color: #4ade80; margin-bottom: 8px; }
+    .confirm-card .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+
+    .ticket-summary {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .ticket-summary .row-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+    .ticket-summary .label { color: #666; }
+    .ticket-summary .value { color: #e0e0e0; font-weight: 600; }
+
+    .confirm-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .confirm-actions button { flex: 1; }
+
+    /* Success screen */
+    #screen-success {
+      display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
+      padding: 40px;
+    }
+    #screen-success .big-check { font-size: 48px; }
+    #screen-success h2 { font-size: 20px; color: #4ade80; }
+    #screen-success p { color: #888; font-size: 13px; max-width: 340px; }
+
+    /* CAPTCHA banner */
+    #captcha-banner {
+      display: none;
+      background: #78350f;
+      border-top: 1px solid #92400e;
+      padding: 10px 20px;
+      font-size: 12px;
+      color: #fde68a;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="dot" id="status-dot"></div>
+    <h1>Ticket Monitor</h1>
+  </header>
+
+  <div class="content">
+
+    <!-- ── Left: config + profile ───────────────────────────────── -->
+    <div class="panel-left">
+
+      <div>
+        <div class="section-title">Event</div>
+        <label for="event-name">Event name</label>
+        <input id="event-name" type="text" placeholder="Taylor Swift – Chicago" />
+
+        <label for="ticket-url">Ticket page URL</label>
+        <input id="ticket-url" type="url" placeholder="https://..." />
+
+        <label for="qty">Quantity</label>
+        <input id="qty" type="number" value="2" min="1" max="8" />
+
+        <label for="seat-pref">Seat preference</label>
+        <select id="seat-pref">
+          <option value="best">Best available</option>
+          <option value="floor">Floor / GA</option>
+          <option value="cheapest">Cheapest</option>
+        </select>
+
+        <label for="max-price">Max price per ticket ($)</label>
+        <input id="max-price" type="text" placeholder="e.g. 250" />
+
+        <label for="poll-interval">Poll interval (seconds)</label>
+        <input id="poll-interval" type="number" value="10" min="5" max="60" />
+      </div>
+
+      <div>
+        <div class="section-title">Profile</div>
+        <label for="u-name">Full name</label>
+        <input id="u-name" type="text" placeholder="Jane Smith" />
+
+        <label for="u-email">Email</label>
+        <input id="u-email" type="email" placeholder="jane@example.com" />
+
+        <label for="u-card">Card (last 4 shown)</label>
+        <input id="u-card" type="text" placeholder="•••• 4242" readonly />
+
+        <label for="u-delivery">Delivery method</label>
+        <select id="u-delivery">
+          <option value="mobile">Mobile</option>
+          <option value="willcall">Will Call</option>
+        </select>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button id="btn-start" class="btn-primary" onclick="startMonitor()">Start</button>
+        <button id="btn-stop" class="btn-danger" onclick="stopMonitor()" disabled>Stop</button>
+      </div>
+
+    </div>
+
+    <!-- ── Right: log + confirm + success ───────────────────────── -->
+    <div class="panel-right">
+
+      <div id="screen-monitor">
+        <div id="activity-log"></div>
+        <div id="captcha-banner">
+          ⚠ CAPTCHA detected — solve it in the browser window to continue.
+        </div>
+      </div>
+
+      <div id="screen-confirm">
+        <div class="confirm-card">
+          <h2>Tickets found!</h2>
+          <p class="subtitle">Review the details and confirm to autofill checkout.</p>
+
+          <div class="ticket-summary">
+            <div class="row-info">
+              <span class="label">Seats</span>
+              <span class="value" id="found-seats">—</span>
+            </div>
+            <div class="row-info">
+              <span class="label">Price</span>
+              <span class="value" id="found-price">—</span>
+            </div>
+          </div>
+
+          <label for="c-name">Name</label>
+          <input id="c-name" type="text" readonly />
+
+          <label for="c-email">Email</label>
+          <input id="c-email" type="email" readonly />
+
+          <div class="confirm-actions">
+            <button class="btn-success" onclick="confirmOrder()">Confirm &amp; Autofill</button>
+            <button class="btn-ghost" onclick="cancelOrder()">Skip</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="screen-success">
+        <div class="big-check">✓</div>
+        <h2>Autofill complete</h2>
+        <p>Review the browser window and click the final confirm button to complete your purchase.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

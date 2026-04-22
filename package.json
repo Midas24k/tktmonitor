@@ -1,0 +1,13 @@
+{
+  "name": "tktmonitor",
+  "version": "0.1.0",
+  "description": "Ticket availability monitor with autofill",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^28.3.3",
+    "playwright": "^1.44.0"
+  }
+}
